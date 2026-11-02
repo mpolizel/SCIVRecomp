@@ -1,0 +1,22 @@
+diff --git a/runner/src/snes/interp_bridge.c b/runner/src/snes/interp_bridge.c
+index 27dd0ea3..ef56a7e8 100644
+--- a/runner/src/snes/interp_bridge.c
++++ b/runner/src/snes/interp_bridge.c
+@@ -1818,8 +1818,15 @@ static int _interp_run_core(CpuState *cpu, uint32_t entry_pc24,
+         }
+         /* A handler that abandoned its frame can outlast the field (DKC1's NMI
+          * uploads SPC data with NMI off): park it here like the main thread so
+-         * the next field resumes it instead of the pre-interrupt PC. */
+-        if ((auto_quiescent || handler_frame_discarded) && s_lle_master_deadline &&
++         * the next field resumes it instead of the pre-interrupt PC.
++         * So can one that keeps its frame: Super Castlevania IV runs its game
++         * logic inside NMI and waits for the next NMI ($00:854B sets $3C to
++         * $80 and spins until that NMI writes 1). On hardware the next NMI
++         * interrupts the waiting handler; parked here, the next field delivers
++         * it on top of this frame, and the handler's own RTI later returns to
++         * the interrupted main thread. Run to the step cap instead, the wait
++         * never ended and the game ran off the rails on its first frame. */
++        if ((auto_quiescent || handler_frame_discarded || stop_on_rti) && s_lle_master_deadline &&
+             cpu->master_cycles >= s_lle_master_deadline) {
+             lle_resume_set(pc_before, INTERP_RESUME_SITE_DEADLINE, in.sp);
+             sync_interp_to_cpu(&in,cpu);
