@@ -40,6 +40,7 @@ add_executable(SuperCastlevaniaIvSNESRecomp
     ${SNESRECOMP_RUNNER_SOURCES}
     src/main.c
     src/sciv_update.c
+    src/sciv_msu.c
     src/host_contract.c
     src/game_rtl.c
     src/gen_stubs.c

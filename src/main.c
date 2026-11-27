@@ -44,6 +44,7 @@
 
 #include "config.h"
 #include "sciv_update.h"
+#include "sciv_msu.h"
 #include <string.h>
 
 #ifdef RECOMP_LAUNCHER
@@ -136,6 +137,9 @@ static const SnesDesktopHostGame kGameHost = {
     .num_players         = 1,
     .shader_supported    = 1,
     .after_config        = ScivAfterConfig,
+    /* MSU-1 pack in the "msu" folder: see sciv_msu.c. */
+    .on_rom_loaded       = ScivMsuOnRomLoaded,
+    .on_reset            = ScivMsuOnReset,
 #ifdef RECOMP_LAUNCHER
     .configure_launcher  = ScivConfigureLauncher,
 #endif

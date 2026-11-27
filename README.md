@@ -68,6 +68,26 @@ the game asks the driver for the dedicated one. If it still runs slowly,
 set the game's executable to **High performance** in Windows Settings →
 System → Display → Graphics.
 
+### MSU-1 music packs
+
+The game plays MSU-1 packs made for Super Castlevania IV: fan-made
+soundtracks (orchestral, arranged, remastered) that replace the cartridge's
+music with CD-quality tracks. The packs use Conn's MSU-1 patch
+(`sc4_msu.ips`) and tracks named `sc4_msu1-1.pcm`, `sc4_msu1-2.pcm`, and so
+on. Neither is included here; packs are shared on the
+[Zeldix forum](https://www.zeldix.net/t1485-super-castlevania-iv).
+
+1. Make a folder named `msu` in the install folder (next to `build\`).
+2. Put the patch `sc4_msu.ips` and the pack's `.pcm` files in it.
+3. Start the game. The log (`build\SuperCastlevaniaIvSNESRecomp.log`) says
+   `[MSU-1] pack on` when the pack is in use.
+
+Your ROM file is never changed: after it passes the SHA-256 check, the patch
+is applied to the copy in memory. Without the folder (or without the patch
+or the tracks) the game plays its own music, as before. Sound effects still
+come from the console's sound chip. After a save state or rewind is loaded,
+the track starts over from its beginning. Updates keep the `msu` folder.
+
 ### Updates
 
 With **Check for updates on start** ticked (the default; on the launcher's main
