@@ -68,25 +68,33 @@ the game asks the driver for the dedicated one. If it still runs slowly,
 set the game's executable to **High performance** in Windows Settings →
 System → Display → Graphics.
 
-### MSU-1 music packs
+### Uncensored graphics and MSU-1 music
 
-The game plays MSU-1 packs made for Super Castlevania IV: fan-made
-soundtracks (orchestral, arranged, remastered) that replace the cartridge's
-music with CD-quality tracks. The packs use Conn's MSU-1 patch
-(`sc4_msu.ips`) and tracks named `sc4_msu1-1.pcm`, `sc4_msu1-2.pcm`, and so
-on. Neither is included here; packs are shared on the
-[Zeldix forum](https://www.zeldix.net/t1485-super-castlevania-iv).
+The launcher's **Settings** page has an **EXTRAS** card with two options.
+Neither file is included here: you bring your own, as with the ROM.
 
-1. Make a folder named `msu` in the install folder (next to `build\`).
-2. Put the patch `sc4_msu.ips` and the pack's `.pcm` files in it.
-3. Start the game. The log (`build\SuperCastlevaniaIvSNESRecomp.log`) says
-   `[MSU-1] pack on` when the pack is in use.
+- **Uncensored graphics** uses the fan hack
+  [Super Castlevania IV Uncensored](https://www.romhacking.net/hacks/2928)
+  2.1 (ShadowOne333 and others), which restores the crosses, blood and other
+  art the US release censored. Unzip it, press **Browse** and choose
+  `Super Castlevania IV Uncensored (Headerless).ips` (the Header one works
+  too). Its optional patches (US font, US chain-whip sound, original US title
+  screen) are found in the unzipped folder and appear as extra checkboxes.
+- **MSU-1 music** plays an MSU-1 pack: fan-made soundtracks (orchestral,
+  arranged, remastered) in CD quality instead of the cartridge's music. Press
+  **Browse** and choose the folder holding Conn's MSU-1 patch
+  (`sc4_msu.ips`) and the pack's `sc4_msu1-1.pcm`, `sc4_msu1-2.pcm`, ...
+  tracks. Packs are shared on the
+  [Zeldix forum](https://www.zeldix.net/t1485-super-castlevania-iv). Sound
+  effects still come from the console's sound chip.
 
-Your ROM file is never changed: after it passes the SHA-256 check, the patch
-is applied to the copy in memory. Without the folder (or without the patch
-or the tracks) the game plays its own music, as before. Sound effects still
-come from the console's sound chip. After a save state or rewind is loaded,
-the track starts over from its beginning. Updates keep the `msu` folder.
+Each file is checked by its SHA-256 when you choose it, and the card says at
+once whether it is recognized. Your ROM file is never changed: when the game
+starts, after the ROM passes its own check, the hack and the pack are applied
+to the copy in memory. With both off the game is exactly as before. The
+choices are kept in `build\extras.ini`; a change made from the in-game
+launcher applies the next time the game starts. After a save state or rewind
+is loaded, the MSU-1 track starts over from its beginning.
 
 ### Updates
 
@@ -142,7 +150,9 @@ git -C snesrecomp apply ../patches/snesrecomp-state-load-raster-reset.patch
 git -C snesrecomp apply ../patches/snesrecomp-v10-savestates.patch
 git -C snesrecomp apply ../patches/snesrecomp-x-rewind-hotkey.patch
 git -C snesrecomp apply ../patches/snesrecomp-x-rom-gate.patch
+git -C snesrecomp apply ../patches/snesrecomp-x-rom-replace.patch
 git -C recomp-ui apply ../patches/recomp-ui-host-toggle.patch
+git -C recomp-ui apply ../patches/recomp-ui-x-host-extras.patch
 ```
 
 `snesrecomp-nmi-nested-wait.patch` is required for this game (it applies on
@@ -240,6 +250,14 @@ turns that back on). Without those arguments and variables nothing changes.
 
 `recomp-ui-host-toggle.patch` lets a title add one checkbox of its own beside
 "Skip launcher on boot"; this project uses it for the update check.
+
+`recomp-ui-x-host-extras.patch` adds an EXTRAS card to the launcher's
+Settings for title-owned options that need a file or a folder (checkbox,
+Browse, the chosen path, a status line and sub-options);
+`snesrecomp-x-rom-replace.patch` lets a title hand the host a different ROM
+image after the verified ROM was read (`SnesDesktopHostGame.replace_rom`).
+This project uses both for the Uncensored hack and MSU-1 packs
+(`src/sciv_patches.c`).
 
 ## ROM identity
 

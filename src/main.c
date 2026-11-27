@@ -44,7 +44,7 @@
 
 #include "config.h"
 #include "sciv_update.h"
-#include "sciv_msu.h"
+#include "sciv_patches.h"
 #include <string.h>
 
 #ifdef RECOMP_LAUNCHER
@@ -54,6 +54,7 @@
 static void ScivConfigureLauncher(RecompLauncherCGameInfo *info)
 {
     info->renderer_note = "Shaders need OpenGL: choosing one switches the renderer to OpenGL.";
+    ScivPatchesConfigureLauncher(info);
 #ifdef _WIN32
     info->host_toggle_label = "Check for updates on start";
     info->host_toggle_help =
@@ -137,9 +138,10 @@ static const SnesDesktopHostGame kGameHost = {
     .num_players         = 1,
     .shader_supported    = 1,
     .after_config        = ScivAfterConfig,
-    /* MSU-1 pack in the "msu" folder: see sciv_msu.c. */
-    .on_rom_loaded       = ScivMsuOnRomLoaded,
-    .on_reset            = ScivMsuOnReset,
+    /* The Uncensored hack and MSU-1 packs chosen in the launcher, applied
+     * in memory: see sciv_patches.c. */
+    .replace_rom         = ScivReplaceRom,
+    .on_reset            = ScivPatchesOnReset,
 #ifdef RECOMP_LAUNCHER
     .configure_launcher  = ScivConfigureLauncher,
 #endif

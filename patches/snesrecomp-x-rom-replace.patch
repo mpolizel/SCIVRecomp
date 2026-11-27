@@ -1,0 +1,40 @@
+diff --git a/runner/src/desktop/host_main.c b/runner/src/desktop/host_main.c
+index 4d1e28cb..8540ef77 100644
+--- a/runner/src/desktop/host_main.c
++++ b/runner/src/desktop/host_main.c
+@@ -4016,6 +4016,18 @@ int snesrecomp_desktop_main(const SnesDesktopHostGame *game, int argc, char **ar
+   }
+   host_report_breadcrumb("rom loaded: %u bytes", kRom_SIZE);
+   if (game->on_rom_loaded) game->on_rom_loaded(kRom, kRom_SIZE);
++  if (game->replace_rom) {
++    size_t replaced_size = 0;
++    uint8 *replaced = game->replace_rom(kRom, kRom_SIZE, &replaced_size);
++    if (replaced && replaced_size && replaced_size <= 0x1000000u) {
++      free(kRom);
++      kRom = replaced;
++      kRom_SIZE = (uint32)replaced_size;
++      host_report_breadcrumb("rom replaced by the game: %u bytes", kRom_SIZE);
++    } else if (replaced) {
++      free(replaced);
++    }
++  }
+ 
+   RtlRegisterGame(game->game_info);
+   msu1_set_rom_path(rom_path_buf);
+diff --git a/runner/src/desktop/host_main.h b/runner/src/desktop/host_main.h
+index 4f28192d..cc04a76a 100644
+--- a/runner/src/desktop/host_main.h
++++ b/runner/src/desktop/host_main.h
+@@ -116,6 +116,12 @@ typedef struct SnesDesktopHostGame {
+   void (*after_config)(void);
+   /* The ROM bytes just read, before SnesInit. */
+   void (*on_rom_loaded)(const uint8_t *rom, size_t size);
++  /* Optional, after on_rom_loaded: return a malloc'd image to run instead of
++   * the ROM just read (a fan patch applied in memory, which may change the
++   * size), with its size in *out_size; the host frees the original. Return
++   * NULL to keep the ROM as read. The ROM file on disk is never changed, and
++   * its identity checks have already passed. */
++  uint8_t *(*replace_rom)(const uint8_t *rom, size_t size, size_t *out_size);
+   /* The guest's timeline just jumped: reset, save-state load, an overlay
+    * closed after freezing it. Presenters drop interpolation history here. */
+   void (*on_reset)(void);

@@ -1,0 +1,198 @@
+diff --git a/src/common/backends/imgui/launcher_imgui.cpp b/src/common/backends/imgui/launcher_imgui.cpp
+index 932baf6..26c5b32 100644
+--- a/src/common/backends/imgui/launcher_imgui.cpp
++++ b/src/common/backends/imgui/launcher_imgui.cpp
+@@ -12844,6 +12844,90 @@ static void draw_mod_features(LauncherModel* m, const LauncherTheme& th) {
+     ImGui::EndChild();
+ }
+ 
++// EXTRAS card (GameInfo.host_extras): host-owned options with a file or a
++// folder. Each row: checkbox, Browse, the chosen path, the host's status line
++// and, while the row is on, its sub-options. Values are the host's: read on
++// every draw, written back through the callbacks.
++int avail_host_extras(const LauncherModel* m) {
++    return m && m->host_extras && m->num_host_extras > 0;
++}
++
++void panel_host_extras_draw(LauncherModel* m, const LauncherTheme* thp) {
++    const LauncherTheme& th = *thp;
++    if (begin_panel("extras", 0)) {
++        eyebrow(m->host_extras_title && m->host_extras_title[0]
++                    ? m->host_extras_title : "EXTRAS");
++        for (int i = 0; i < m->num_host_extras; ++i) {
++            const RecompLauncherHostExtra* e = &m->host_extras[i];
++            ImGui::PushID(i);
++            if (i > 0) ImGui::Dummy(ImVec2(0, px(6)));
++            const bool on = e->get_enabled && e->get_enabled() != 0;
++            bool v = on;
++            if (ImGui::Checkbox(ui_text(e->label ? e->label : "Option"), &v) &&
++                e->set_enabled)
++                e->set_enabled(v ? 1 : 0);
++            if (e->help && e->help[0] && ImGui::IsItemHovered()) {
++                ImGui::BeginTooltip();
++                ImGui::PushTextWrapPos(px(380));
++                ImGui::TextUnformatted(e->help);
++                ImGui::PopTextWrapPos();
++                ImGui::EndTooltip();
++            }
++            if (e->set_path) {
++                const float bw = px(78);
++                ImGui::SameLine(ImGui::GetCursorPosX() +
++                                ImGui::GetContentRegionAvail().x - bw);
++                if (ImGui::Button(ui_text("Browse"), ImVec2(bw, px(28)))) {
++                    auto set = e->set_path;
++                    if (e->pick_folder) {
++                        ui_pick_folder(m, e->pick_title, [set](const char* p) {
++                            if (p) set(p);
++                        });
++                    } else {
++                        std::vector<std::string> pats;
++                        for (int k = 0; e->pick_patterns && k < e->pick_pattern_count; ++k)
++                            if (e->pick_patterns[k]) pats.emplace_back(e->pick_patterns[k]);
++                        ui_pick_file(m, e->pick_title, std::move(pats), e->pick_description,
++                                     [set](const char* p) { if (p) set(p); });
++                    }
++                }
++            }
++            const char* path = e->get_path ? e->get_path() : NULL;
++            char elided[384];
++            elide_left(path && path[0] ? path : ui_text("(not set)"),
++                       ImGui::GetContentRegionAvail().x, elided, sizeof(elided));
++            ImGui::TextColored(col(th.text_muted), "%s", elided);
++            if (path && path[0] && ImGui::IsItemHovered()) ImGui::SetTooltip("%s", path);
++            if (e->status) {
++                int level = 0;
++                const char* st = e->status(&level);
++                if (st && st[0]) {
++                    ImGui::PushStyleColor(ImGuiCol_Text,
++                        col(level == 1 ? th.good : level == 2 ? th.warn : th.text_muted));
++                    ImGui::PushTextWrapPos(0.0f);
++                    ImGui::TextUnformatted(st);
++                    ImGui::PopTextWrapPos();
++                    ImGui::PopStyleColor();
++                }
++            }
++            const int subs = e->sub_count ? e->sub_count() : 0;
++            if (on && subs > 0 && e->sub_label) {
++                ImGui::Indent(px(22));
++                for (int k = 0; k < subs; ++k) {
++                    ImGui::PushID(1000 + k);
++                    bool sv = e->sub_get && e->sub_get(k) != 0;
++                    if (ImGui::Checkbox(ui_text(e->sub_label(k)), &sv) && e->sub_set)
++                        e->sub_set(k, sv ? 1 : 0);
++                    ImGui::PopID();
++                }
++                ImGui::Unindent(px(22));
++            }
++            ImGui::PopID();
++        }
++    }
++    end_panel();
++}
++
+ static void draw_rom_patch(LauncherModel* m, const LauncherTheme& th) {
+     if (!m || !m->rom_patch_supported) return;
+ 
+@@ -12996,6 +13080,7 @@ const LauncherPanel kPanelRegistry[] = {
+     { "input",             LNG_VIEW_SETTINGS,   LNG_SLOT_SIDE, avail_input,  panel_input_draw },
+     { "system",            LNG_VIEW_SETTINGS,   LNG_SLOT_SIDE, avail_system, panel_system_draw },
+     { "solar",             LNG_VIEW_SETTINGS,   LNG_SLOT_SIDE, avail_solar,  panel_solar_draw },
++    { "extras",            LNG_VIEW_SETTINGS,   LNG_SLOT_SIDE, avail_host_extras, panel_host_extras_draw },
+     { "hotkeys",           LNG_VIEW_SETTINGS,   LNG_SLOT_WIDE, nullptr,      panel_hotkeys_draw },
+     { "controller_config", LNG_VIEW_CONTROLLER, LNG_SLOT_WIDE, nullptr,      panel_controller_config_draw },
+     { nullptr,              LNG_VIEW_DASHBOARD,  0,             nullptr,      nullptr },   // sentinel
+diff --git a/src/common/launcher_model.c b/src/common/launcher_model.c
+index 08c08c4..950de81 100644
+--- a/src/common/launcher_model.c
++++ b/src/common/launcher_model.c
+@@ -598,6 +598,9 @@ void launcher_model_init(LauncherModel* m,
+         m->host_toggle_help     = game->host_toggle_help;
+         m->host_toggle_get      = game->host_toggle_get;
+         m->host_toggle_set      = game->host_toggle_set;
++        m->host_extras_title    = game->host_extras_title;
++        m->host_extras          = game->host_extras;
++        m->num_host_extras      = game->host_extras ? game->num_host_extras : 0;
+         m->has_frame_blend      = game->has_frame_blend != 0;
+         m->has_run_ahead        = game->has_run_ahead != 0;
+         m->has_shader           = game->has_shader != 0;
+diff --git a/src/common/launcher_model.h b/src/common/launcher_model.h
+index acfc9b3..bb0d612 100644
+--- a/src/common/launcher_model.h
++++ b/src/common/launcher_model.h
+@@ -376,6 +376,10 @@ typedef struct {
+     const char* host_toggle_help;
+     int (*host_toggle_get)(void);
+     void (*host_toggle_set)(int value);
++    // Borrowed from GameInfo.host_extras*: the EXTRAS card's rows.
++    const char* host_extras_title;
++    const RecompLauncherHostExtra* host_extras;
++    int num_host_extras;
+     bool has_frame_blend;
+     bool has_run_ahead;
+     bool has_shader;
+diff --git a/src/consoles/snes/snes_profile.h b/src/consoles/snes/snes_profile.h
+index 5ffcf7a..86f77e5 100644
+--- a/src/consoles/snes/snes_profile.h
++++ b/src/consoles/snes/snes_profile.h
+@@ -40,7 +40,7 @@ static const int kSnesGamepadBindOrder[LNG_SNES_PAD_BUTTON_COUNT] = {
+ #define LNG_SNES_GAMEPAD_BIND_ROWS 4
+ 
+ // ---- panel composition --------------------------------------------------------
+-static const char* const kPanelsSettingsSnes[]  = { "video", "audio", "hotkeys", NULL };
++static const char* const kPanelsSettingsSnes[]  = { "video", "audio", "extras", "hotkeys", NULL };
+ 
+ // ---- ROM file-picker filter -----------------------------------------------------
+ static const char* const kSnesRomPatterns[] = { "*.sfc", "*.smc", "*.fig", "*.swc" };
+diff --git a/src/recomp_launcher.h b/src/recomp_launcher.h
+index d6b9960..6fc1072 100644
+--- a/src/recomp_launcher.h
++++ b/src/recomp_launcher.h
+@@ -1753,6 +1753,31 @@ typedef struct RecompLauncherCRomRevision {
+     const char* note;        /* shown when this one is picked; NULL: none */
+ } RecompLauncherCRomRevision;
+ 
++/* One row of the EXTRAS card (GameInfo.host_extras): a host-owned option
++ * that needs a file or a folder, such as a fan patch or an MSU-1 pack. The
++ * host owns and persists every value; the launcher only draws the row and
++ * calls back. Every callback may be NULL. */
++typedef struct RecompLauncherHostExtra {
++    const char*        label;          /* checkbox text */
++    const char*        help;           /* hover text on the checkbox */
++    int                pick_folder;    /* Browse picks a folder (1) or a file (0) */
++    const char*        pick_title;
++    const char* const* pick_patterns;  /* file filters, e.g. "*.ips" */
++    int                pick_pattern_count;
++    const char*        pick_description;
++    int              (*get_enabled)(void);
++    void             (*set_enabled)(int on);
++    const char*      (*get_path)(void);           /* shown under the row */
++    void             (*set_path)(const char* path); /* the host checks and keeps it */
++    /* Status line under the path; *level: 0 = plain, 1 = good, 2 = problem. */
++    const char*      (*status)(int* level);
++    /* Optional sub-options, drawn indented under the row while it is on. */
++    int              (*sub_count)(void);
++    const char*      (*sub_label)(int index);
++    int              (*sub_get)(int index);
++    void             (*sub_set)(int index, int on);
++} RecompLauncherHostExtra;
++
+ typedef struct RecompLauncherCGameInfo {
+     const char*    name;
+     const char*    region;
+@@ -2498,7 +2523,16 @@ typedef struct RecompLauncherCGameInfo {
+     const char*        host_toggle_help;
+     int              (*host_toggle_get)(void);
+     void             (*host_toggle_set)(int value);
++
++    /* Optional EXTRAS card in Settings: num_host_extras rows, each a
++     * host-owned option with a file or folder (see RecompLauncherHostExtra).
++     * host_extras_title names the card; NULL => "EXTRAS". Zero rows => no
++     * card. Appended for ABI stability. */
++    const char*                    host_extras_title;
++    const RecompLauncherHostExtra* host_extras;
++    int                            num_host_extras;
+ } RecompLauncherCGameInfo;
++#define RECOMP_LAUNCHER_HAS_HOST_EXTRAS 1
+ #define RECOMP_LAUNCHER_HAS_VSYNC_VRR 1
+ #define RECOMP_LAUNCHER_HAS_FRAME_GENERATION_HIDDEN 1
+ #define RECOMP_LAUNCHER_HAS_CARD_MANAGER 1

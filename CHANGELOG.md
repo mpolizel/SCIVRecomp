@@ -2,13 +2,15 @@
 
 ## 0.1.5 — 2026-11-27
 
-MSU-1 music packs. Put Conn's MSU-1 patch (sc4_msu.ips) and a pack's
-sc4_msu1-<N>.pcm tracks in a folder named msu in the install folder, and the
-game plays the pack's CD-quality soundtrack instead of the cartridge's
-music, as on an emulator or an FXPak. The patch is applied to the ROM in
-memory after the ROM passed its check; your ROM file is never changed.
-Without the folder nothing changes. After a save state or rewind is loaded
-the pack's track starts over. Your saves and save states keep loading.
+Uncensored graphics and MSU-1 music, both chosen in the launcher's
+Settings (new EXTRAS card). Uncensored applies the fan hack Super Castlevania
+IV Uncensored 2.1, restoring the crosses, blood and other censored art, with
+its optional US font, US chain-whip sound and US title screen; MSU-1 plays a
+pack made for Conn's MSU-1 patch instead of the cartridge's music. You bring
+the files; each is checked by its SHA-256 when chosen and the card says
+whether it is recognized. The ROM file is never changed: both are applied to
+the ROM in memory after it passed its check. With both off nothing changes.
+Your saves and save states keep loading.
 
 ## 0.1.4 — 2026-11-24
 
